@@ -374,6 +374,7 @@ const MSAL_CONFIG = {
 const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
 const DB_FILENAME  = 'recycling-marks-db.json';
 const DB_FOLDER    = 'Recycling Marks';
+const DB_OWNER_UPN  = 'andy.whittome@fkabrands.com';
 const SHARED_DB_ID = 'u!aHR0cHM6Ly9ma2FsbGMtbXkuc2hhcmVwb2ludC5jb20vOnU6L2cvcGVyc29uYWwvYW5keV93aGl0dG9tZV9ma2FicmFuZHNfY29tL0lRQTBTQ0JDcXBtcFFKOUxtRUpYdnBpbEFUeFVzZlVYYWRkMDJOQ1NaZEhzY3M4P2U9TFJhbEho';
 let DB_DRIVE_ID    = null; // resolved on first load
 const HOSTED_URL   = 'https://andywhittome.github.io/recycling-marks/recycling_mark_generator_v3.html';
@@ -470,13 +471,17 @@ async function graphPut(path, body, contentType='application/json') {
 
 async function loadFromOneDrive() {
   try {
-    // Use the shared file directly via its share ID
-    const result = await graphGet('/shares/' + SHARED_DB_ID + '/driveItem');
+    // Access the file via the owner's drive using their UPN
+    // Any FKA tenant user can access another user's shared file this way
+    const path = '/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME;
+    const result = await graphGet(path);
     dbFileId = result.id;
+    if (!DB_DRIVE_ID && result.parentReference) DB_DRIVE_ID = result.parentReference.driveId;
     const token = await getToken();
-    // Download via the download URL
     const downloadUrl = result['@microsoft.graph.downloadUrl'];
-    const r = await fetch(downloadUrl, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await fetch(downloadUrl || ('https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content'), {
+      headers: { Authorization: 'Bearer ' + token }
+    });
     if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
     return data.combinations || [];
@@ -491,11 +496,10 @@ async function loadFromOneDrive() {
 
 async function saveToOneDrive(combinations) {
   const content = JSON.stringify({ combinations, updated: new Date().toISOString() }, null, 2);
-  // Write to the shared file using its item ID (resolved on first load)
-  if (!dbFileId) {
-    // Resolve file ID first
-    const result = await graphGet('/shares/' + SHARED_DB_ID + '/driveItem');
+  if (!dbFileId || !DB_DRIVE_ID) {
+    const result = await graphGet('/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME);
     dbFileId = result.id;
+    if (result.parentReference) DB_DRIVE_ID = result.parentReference.driveId;
   }
   const token = await getToken();
   const r = await fetch('https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content', {
