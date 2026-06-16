@@ -928,17 +928,17 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
   const RD='#2e7d8a', RM='#3d9aaa', ND='#b8690a', NM='#cc7a10', BDR='1px solid #fff';
   const cellFs = n<=3 ? '8pt' : n<=5 ? '7pt' : n<=7 ? '6.5pt' : '6pt';
   const cellPad = n<=4 ? '6px 5px' : n<=6 ? '5px 4px' : '4px 3px';
-  const ps = '-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;';
 
   const cols = all.map(k => {
     const d = MAT[k]||{};
     const isR = k.startsWith('Icon_R_');
     const dk = isR ? RD : ND;
     const md = isR ? RM : NM;
-    return '<td style="width:' + Math.floor(100/n) + '%;padding:0;border-right:' + BDR + '">'
-      + '<div style="' + ps + 'background:' + dk + ';color:#fff;font-size:' + cellFs + ';font-weight:700;padding:' + cellPad + ';text-align:center;border-bottom:' + BDR + ';word-break:break-word;line-height:1.2">' + (d.it||'') + '</div>'
-      + '<div style="' + ps + 'background:' + md + ';color:#fff;font-size:' + cellFs + ';padding:' + cellPad + ';text-align:center;border-bottom:' + BDR + ';word-break:break-word;line-height:1.2">' + (d.c||'') + '</div>'
-      + '<div style="' + ps + 'background:' + md + ';color:#fff;font-size:' + cellFs + ';font-weight:700;padding:' + cellPad + ';text-align:center;word-break:break-word;line-height:1.2">' + (d.itm||'') + '</div>'
+    const base = 'color:#fff!important;font-size:' + cellFs + ';padding:' + cellPad + ';text-align:center;word-break:break-word;line-height:1.3;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important';
+    return '<td style="width:' + Math.floor(100/n) + '%;padding:0;border-right:' + BDR + ';vertical-align:top">'
+      + '<div style="background:' + dk + '!important;' + base + ';font-weight:700;border-bottom:' + BDR + '">' + (d.it||'') + '</div>'
+      + '<div style="background:' + md + '!important;' + base + ';border-bottom:' + BDR + '">' + (d.c||'') + '</div>'
+      + '<div style="background:' + md + '!important;' + base + ';font-weight:700">' + (d.itm||'') + '</div>'
       + '</td>';
   }).join('');
 
@@ -946,25 +946,27 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
   const ub = btoa(unescape(encodeURIComponent(ukSvg)));
   const ukH = nK.length ? 48 : 28;
 
-  const printScript = '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){window.print();},600);})</scr' + 'ipt>';
+  // Split script tag to avoid browser parsing issues
+  const printScript = '<scr' + 'ipt>window.addEventListener("load",function(){var t=document.querySelector(".ref");if(t)document.title=t.textContent;setTimeout(function(){window.print();},600);})</scr' + 'ipt>';
 
   const page = '<!DOCTYPE html><html><head><meta charset="utf-8">'
     + printScript
     + '<style>'
     + '@page{size:A4 landscape;margin:10mm}'
-    + '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;box-sizing:border-box}'
+    + 'html,body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}'
+    + '*{box-sizing:border-box}'
     + 'body{font-family:Helvetica,Arial,sans-serif;margin:0;padding:0}'
     + '.ref{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;margin-bottom:14px}'
     + '.logo{text-align:center;margin-bottom:10px}'
     + '.sec{font-size:10pt;font-weight:700;text-align:center;margin:14px 0 8px}'
     + 'table{width:100%;border-collapse:collapse;border:1.5px solid #888;table-layout:fixed}'
-    + '.instr{' + ps + 'background:' + RM + '!important;color:#fff;font-size:8.5pt;font-weight:700;text-align:center;padding:7px;letter-spacing:.5px}'
+    + '.instr{background:' + RM + '!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color:#fff!important;font-size:8.5pt;font-weight:700;text-align:center;padding:7px;letter-spacing:.5px}'
     + '.marks-row{display:flex;justify-content:center;align-items:flex-start;gap:40px;margin-top:8px}'
     + '.center{text-align:center}'
     + '</style></head><body>'
     + '<div class="logo"><img src="' + FKA_LOGO + '" style="height:36px"/></div>'
     + '<div class="ref">' + code + '</div>'
-    + '<div class="sec">Istruzioni di riciclaggio per l\u2019Italia</div>'
+    + '<div class="sec">Istruzioni di riciclaggio per l’Italia</div>'
     + '<table><tr>' + cols + '</tr></table>'
     + '<div class="instr">RACCOLTA DIFFERENZIATA</div>'
     + '<div class="marks-row">'
