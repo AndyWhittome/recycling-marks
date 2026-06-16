@@ -83,7 +83,7 @@ tr:hover td{background:#fafafa}
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <div style="text-align:right">
-        <div id="online-indicator" style="font-size:10px;color:#6b7280">&#9679; Offline — history not shared</div>
+        <div style="display:flex;align-items:center;gap:6px"><div id="online-indicator" style="font-size:10px;color:#6b7280">&#9679; Offline — history not shared</div><button id="refresh-btn" onclick="refreshFromOneDrive()" style="display:none;padding:2px 8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:3px;font-size:10px;cursor:pointer">↻ Refresh</button></div>
         <div id="auth-status" style="font-size:10px;color:#6b7280;min-height:14px"></div>
       </div>
       <button id="signin-btn" onclick="connectOneDrive()" style="padding:5px 12px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap">Connect OneDrive</button>
@@ -471,9 +471,8 @@ async function graphPut(path, body, contentType='application/json') {
 
 async function loadFromOneDrive() {
   try {
-    // Access the file via the owner's drive using their UPN
-    // Any FKA tenant user can access another user's shared file this way
     const path = '/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME;
+    setAuthStatus('Reading from OneDrive…', 'info');
     const result = await graphGet(path);
     dbFileId = result.id;
     if (!DB_DRIVE_ID && result.parentReference) DB_DRIVE_ID = result.parentReference.driveId;
@@ -484,10 +483,14 @@ async function loadFromOneDrive() {
     });
     if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
-    return data.combinations || [];
+    const combos = data.combinations || [];
+    setAuthStatus('Loaded ' + combos.length + ' combinations from OneDrive', 'ok');
+    setTimeout(() => setAuthStatus('', 'ok'), 3000);
+    return combos;
   } catch(e) {
     console.error('loadFromOneDrive error:', e);
     if (e.message && (e.message.includes('404') || e.message.includes('itemNotFound'))) {
+      setAuthStatus('Database file not found — needs seeding', 'err');
       return [];
     }
     throw e;
@@ -542,6 +545,8 @@ function setOnlineIndicator(online, username) {
     ind.innerHTML = '&#9679; Syncing with OneDrive' + (username ? ' · ' + username : '');
     ind.style.color = '#0F6E56';
     if (btn) btn.style.display = 'none';
+    const rbtn = document.getElementById('refresh-btn');
+    if (rbtn) rbtn.style.display = 'inline-block';
   } else {
     ind.innerHTML = '&#9679; Offline — history not shared';
     ind.style.color = '#6b7280';
@@ -1033,6 +1038,25 @@ function renderHist(q) {
 }
 
 function filterHist(q) { renderHist(q); }
+
+async function refreshFromOneDrive() {
+  if (!onlineMode) return;
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
+  try {
+    const remote = await loadFromOneDrive();
+    const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
+    const newFromRemote = remote.filter(c => !existingRefs.has(c.ref));
+    sess.push(...newFromRemote);
+    updateHistCount();
+    renderHist('');
+    setAuthStatus('Refreshed — ' + (COMBOS.length + sess.length) + ' total combinations', 'ok');
+    setTimeout(() => setAuthStatus('', 'ok'), 3000);
+  } catch(e) {
+    setAuthStatus('Refresh failed: ' + e.message, 'err');
+  }
+  if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
+}
 
 async function seedDatabase() {
   if (!onlineMode) { alert('Please connect OneDrive first'); return; }
