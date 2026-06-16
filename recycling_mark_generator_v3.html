@@ -374,6 +374,8 @@ const MSAL_CONFIG = {
 const GRAPH_SCOPES = ['Files.ReadWrite', 'User.Read'];
 const DB_FILENAME  = 'recycling-marks-db.json';
 const DB_FOLDER    = 'Recycling Marks';
+const SHARED_DB_ID = 'u!aHR0cHM6Ly9ma2FsbGMtbXkuc2hhcmVwb2ludC5jb20vOnU6L2cvcGVyc29uYWwvYW5keV93aGl0dG9tZV9ma2FicmFuZHNfY29tL0lRQTBTQ0JDcXBtcFFKOUxtRUpYdnBpbEFXQ3liLVRPQVRuNmVrSHhic0NnSzBBP2U9Rk5lNG1o';
+let DB_DRIVE_ID    = null; // resolved on first load
 const HOSTED_URL   = 'https://andywhittome.github.io/recycling-marks/recycling_mark_generator_v3.html';
 
 let msalInstance = null;
@@ -438,7 +440,8 @@ async function getToken() {
 
 async function graphGet(path) {
   const token = await getToken();
-  const r = await fetch('https://graph.microsoft.com/v1.0' + path, {
+  const url = path.startsWith('http') ? path : 'https://graph.microsoft.com/v1.0' + path;
+  const r = await fetch(url, {
     headers: { Authorization: 'Bearer ' + token }
   });
   if (!r.ok) {
@@ -446,7 +449,12 @@ async function graphGet(path) {
     try { const j = await r.json(); errDetail = j.error?.message || JSON.stringify(j); } catch(e) {}
     throw new Error('Graph GET failed (' + r.status + '): ' + errDetail);
   }
-  return r.json();
+  const data = await r.json();
+  // Cache drive ID when we resolve the shared item
+  if (data.parentReference?.driveId && !DB_DRIVE_ID) {
+    DB_DRIVE_ID = data.parentReference.driveId;
+  }
+  return data;
 }
 
 async function graphPut(path, body, contentType='application/json') {
@@ -462,21 +470,19 @@ async function graphPut(path, body, contentType='application/json') {
 
 async function loadFromOneDrive() {
   try {
-    // Try to find existing file
-    const result = await graphGet('/me/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME);
+    // Use the shared file directly via its share ID
+    const result = await graphGet('/shares/' + SHARED_DB_ID + '/driveItem');
     dbFileId = result.id;
-    // Download content
     const token = await getToken();
-    const r = await fetch(result['@microsoft.graph.downloadUrl'] || 
-      'https://graph.microsoft.com/v1.0/me/drive/items/' + dbFileId + '/content', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
+    // Download via the download URL
+    const downloadUrl = result['@microsoft.graph.downloadUrl'];
+    const r = await fetch(downloadUrl, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
     return data.combinations || [];
   } catch(e) {
-    if (e.message.includes('404') || e.message.includes('itemNotFound')) {
-      // File doesn't exist yet — create it with seed data
-      await saveToOneDrive([]);
+    console.error('loadFromOneDrive error:', e);
+    if (e.message && (e.message.includes('404') || e.message.includes('itemNotFound'))) {
       return [];
     }
     throw e;
@@ -485,11 +491,23 @@ async function loadFromOneDrive() {
 
 async function saveToOneDrive(combinations) {
   const content = JSON.stringify({ combinations, updated: new Date().toISOString() }, null, 2);
-  const result = await graphPut(
-    '/me/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME + ':/content',
-    content, 'application/json'
-  );
-  dbFileId = result.id;
+  // Write to the shared file using its item ID (resolved on first load)
+  if (!dbFileId) {
+    // Resolve file ID first
+    const result = await graphGet('/shares/' + SHARED_DB_ID + '/driveItem');
+    dbFileId = result.id;
+  }
+  const token = await getToken();
+  const r = await fetch('https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content', {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: content
+  });
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error('Save failed (' + r.status + '): ' + err);
+  }
+  return r.json();
 }
 
 async function appendToOneDrive(newCombo) {
