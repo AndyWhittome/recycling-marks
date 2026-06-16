@@ -925,22 +925,32 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
   const code = ref.toUpperCase();
   const all = [...rK, ...nK];
   const n = all.length;
-  const RD='#2e7d8a', RM='#3d9aaa', ND='#b8690a', NM='#cc7a10', BDR='1px solid #fff';
+  const RD='#2e7d8a', RM='#3d9aaa', ND='#b8690a', NM='#cc7a10';
   const cellFs = n<=3 ? '8pt' : n<=5 ? '7pt' : n<=7 ? '6.5pt' : '6pt';
-  const cellPad = n<=4 ? '6px 5px' : n<=6 ? '5px 4px' : '4px 3px';
+  const cellPad = n<=4 ? '7px 5px' : n<=6 ? '6px 4px' : '5px 3px';
+  const bs = ';-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important';
 
-  const cols = all.map(k => {
+  // Build three separate rows: name row, code row, material row
+  // Each row is a <tr> so cells in the same row are always equal height
+  const nameRow = all.map(k => {
     const d = MAT[k]||{};
     const isR = k.startsWith('Icon_R_');
-    const dk = isR ? RD : ND;
-    const md = isR ? RM : NM;
-    // Use box-shadow instead of background - box-shadow always prints regardless of browser settings
-    const base = 'color:#fff;font-size:' + cellFs + ';padding:' + cellPad + ';text-align:center;word-break:break-word;line-height:1.3;position:relative;z-index:0';
-    return '<td style="width:' + Math.floor(100/n) + '%;padding:0;border-right:' + BDR + ';vertical-align:top">'
-      + '<div style="background:' + dk + ';box-shadow:inset 0 0 0 100vw ' + dk + ';' + base + ';font-weight:700;border-bottom:' + BDR + '">' + (d.it||'') + '</div>'
-      + '<div style="background:' + md + ';box-shadow:inset 0 0 0 100vw ' + md + ';' + base + ';border-bottom:' + BDR + '">' + (d.c||'') + '</div>'
-      + '<div style="background:' + md + ';box-shadow:inset 0 0 0 100vw ' + md + ';' + base + ';font-weight:700">' + (d.itm||'') + '</div>'
-      + '</td>';
+    const bg = isR ? RD : ND;
+    return '<td style="background:' + bg + ';box-shadow:inset 0 0 0 200px ' + bg + ';color:#fff;font-size:' + cellFs + ';font-weight:700;padding:' + cellPad + ';text-align:center;vertical-align:top;border-right:1px solid #fff' + bs + '">' + (d.it||'') + '</td>';
+  }).join('');
+
+  const codeRow = all.map(k => {
+    const d = MAT[k]||{};
+    const isR = k.startsWith('Icon_R_');
+    const bg = isR ? RM : NM;
+    return '<td style="background:' + bg + ';box-shadow:inset 0 0 0 200px ' + bg + ';color:#fff;font-size:' + cellFs + ';padding:' + cellPad + ';text-align:center;vertical-align:top;border-right:1px solid #fff;border-top:1px solid #fff' + bs + '">' + (d.c||'') + '</td>';
+  }).join('');
+
+  const matRow = all.map(k => {
+    const d = MAT[k]||{};
+    const isR = k.startsWith('Icon_R_');
+    const bg = isR ? RM : NM;
+    return '<td style="background:' + bg + ';box-shadow:inset 0 0 0 200px ' + bg + ';color:#fff;font-size:' + cellFs + ';font-weight:700;padding:' + cellPad + ';text-align:center;vertical-align:top;border-right:1px solid #fff;border-top:1px solid #fff' + bs + '">' + (d.itm||'') + '</td>';
   }).join('');
 
   const fb = btoa(unescape(encodeURIComponent(frSvg)));
@@ -955,22 +965,26 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
     + '@page{size:A4 landscape;margin:10mm}'
     + '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;box-sizing:border-box}'
     + 'body{font-family:Helvetica,Arial,sans-serif;margin:0;padding:0}'
-    + '.ref{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;margin-bottom:14px}'
-    + '.logo{text-align:center;margin-bottom:10px}'
-    + '.sec{font-size:10pt;font-weight:700;text-align:center;margin:12px 0 6px}'
-    + 'table{width:100%;border-collapse:collapse;border:1.5px solid #888;table-layout:fixed}'
-    + '.instr{background:' + RM + ';box-shadow:inset 0 0 0 100vw ' + RM + ';color:#fff;font-size:8.5pt;font-weight:700;text-align:center;padding:7px;letter-spacing:.5px}'
-    + '.marks-col{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:4px}'
+    + '.ref{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;margin-bottom:12px}'
+    + '.logo{text-align:center;margin-bottom:8px}'
+    + '.sec{font-size:9pt;font-weight:700;text-align:center;margin:10px 0 5px}'
+    + 'table{width:100%;border-collapse:collapse;border:1.5px solid #555;table-layout:fixed}'
+    + '.instr{background:' + RM + ';box-shadow:inset 0 0 0 200px ' + RM + ';color:#fff;font-size:8pt;font-weight:700;text-align:center;padding:6px;letter-spacing:.5px}'
+    + '.marks-col{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:6px}'
     + '.mark-block{text-align:center}'
     + '</style></head><body>'
-    + '<div class="logo"><img src="' + FKA_LOGO + '" style="height:32px"/></div>'
+    + '<div class="logo"><img src="' + FKA_LOGO + '" style="height:30px"/></div>'
     + '<div class="ref">' + code + '</div>'
     + '<div class="sec">Istruzioni di riciclaggio per l’Italia</div>'
-    + '<table><tr>' + cols + '</tr></table>'
+    + '<table>'
+    + '<tr>' + nameRow + '</tr>'
+    + '<tr>' + codeRow + '</tr>'
+    + '<tr>' + matRow + '</tr>'
+    + '</table>'
     + '<div class="instr">RACCOLTA DIFFERENZIATA</div>'
     + '<div class="marks-col">'
     + '<div class="mark-block"><div class="sec">Instructions de recyclage pour la France</div>'
-    + '<img src="data:image/svg+xml;base64,' + fb + '" style="height:32px;max-width:100%"/></div>'
+    + '<img src="data:image/svg+xml;base64,' + fb + '" style="height:30px;max-width:100%"/></div>'
     + '<div class="mark-block"><div class="sec">Recycling instructions for the United Kingdom</div>'
     + '<img src="data:image/svg+xml;base64,' + ub + '" style="height:' + ukH + 'px;max-width:100%"/></div>'
     + '</div>'
