@@ -62,7 +62,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f0f2f5;color:#1a
 .preview-tabs{display:flex;gap:4px;margin-bottom:10px}
 .prev-tab{padding:5px 12px;border-radius:4px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:11px;font-weight:500;cursor:pointer}
 .prev-tab.active{background:#3d9aaa;color:#fff;border-color:#3d9aaa}
-.preview-box{background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:16px;min-height:80px;display:flex;align-items:center;justify-content:center;overflow:auto;margin-bottom:10px}
+.preview-box{background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:16px;min-height:80px;display:flex;align-items:center;justify-content:center;overflow:auto;margin-bottom:10px}.preview-box svg{max-width:100%;height:auto}
 .hist-view{padding:20px;background:#f0f2f5;flex:1;overflow-y:auto}
 .hist-search{width:100%;max-width:320px;padding:7px 9px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;margin-bottom:12px;outline:none}
 .hist-search:focus{border-color:#3d9aaa}
@@ -126,7 +126,10 @@ tr:hover td{background:#fafafa}
 
   <!-- History view -->
   <div class="hist-view" id="view-hist" style="display:none">
-    <input class="hist-search" type="text" placeholder="Search by ref, brand or material&hellip;" oninput="filterHist(this.value)">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input class="hist-search" type="text" placeholder="Search by ref, brand or material&hellip;" oninput="filterHist(this.value)" style="margin-bottom:0">
+      <button id="seed-btn" onclick="seedDatabase()" style="padding:7px 14px;background:#2e7d8a;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Seed historical data</button>
+    </div>
     <table id="hist-table">
       <thead>
         <tr>
@@ -872,7 +875,7 @@ function buildUK(rK, nK) {
   const H = CL.h, fs = 5.2, font = `font-family="Futura PT,Futura,Arial Black,sans-serif" font-weight="900"`;
   const rT = rK.map(k => MAT[k]?.uk||k).join(', ') + ' recycle';
   const nT = nK.map(k => MAT[k]?.uk||k).join(', ') + " don\u2019t recycle";
-  const nt = Math.max(1, Math.ceil((Math.max(rT.length, mx ? nT.length : 0) * 2.8 + 6) / CB.w));
+  const nt = Math.max(1, Math.ceil((Math.max(rT.length, mx ? nT.length : 0) * 3.5 + 8) / CB.w));
   const bw = nt * CB.w, tw = CL.w + bw + CR.w;
   const ps = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tw.toFixed(2)} ${H}">`];
   ps.push(em(CL, 0, 0));
@@ -952,6 +955,35 @@ function renderHist(q) {
 }
 
 function filterHist(q) { renderHist(q); }
+
+async function seedDatabase() {
+  if (!onlineMode) { alert('Please connect OneDrive first'); return; }
+  const btn = document.getElementById('seed-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Seeding…'; }
+  try {
+    // Check if file already has data
+    let existing = [];
+    try { existing = await loadFromOneDrive(); } catch(e) {}
+    if (existing.length > 0) {
+      if (!confirm(`OneDrive already has ${existing.length} combinations. Replace with the full 106 historical records?`)) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
+        return;
+      }
+    }
+    await saveToOneDrive(COMBOS);
+    // Reload
+    sess = [];
+    updateHistCount();
+    renderHist('');
+    if (btn) { btn.textContent = '✓ Seeded 106 combinations'; }
+    setAuthStatus('Historical data seeded to OneDrive', 'ok');
+    setTimeout(() => { if(btn){btn.disabled=false;btn.textContent='Seed historical data';} }, 3000);
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
+    setAuthStatus('Seed failed: ' + e.message, 'err');
+  }
+}
+
 
 // Auto-connect on load — handles both silent reconnect and post-redirect auth
 window.addEventListener('load', async () => {
