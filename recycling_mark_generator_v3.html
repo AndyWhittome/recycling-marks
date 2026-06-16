@@ -14,7 +14,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f0f2f5;color:#1a
 .nav{display:flex;gap:5px}
 .nav-btn{padding:5px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:500;background:rgba(255,255,255,.15);color:#fff;transition:background .15s}
 .nav-btn.active{background:#fff;color:#2e7d8a}
-.body{display:flex;flex:1;overflow:hidden}
+.body{display:flex;flex:1;min-height:0;overflow:hidden}
 .sidebar{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e5e7eb;overflow-y:auto;padding:14px}
 .content{flex:1;overflow-y:auto;padding:20px;background:#f0f2f5}
 .sec-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:#6b7280;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
@@ -63,7 +63,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f0f2f5;color:#1a
 .prev-tab{padding:5px 12px;border-radius:4px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:11px;font-weight:500;cursor:pointer}
 .prev-tab.active{background:#3d9aaa;color:#fff;border-color:#3d9aaa}
 .preview-box{background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:16px;min-height:80px;display:flex;align-items:center;justify-content:center;overflow:auto;margin-bottom:10px}.preview-box svg{max-width:100%;height:auto}
-.hist-view{padding:20px;background:#f0f2f5;flex:1;overflow-y:auto}
+.hist-view{padding:20px;background:#f0f2f5;overflow-y:auto;width:100%}
 .hist-search{width:100%;max-width:320px;padding:7px 9px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;margin-bottom:12px;outline:none}
 .hist-search:focus{border-color:#3d9aaa}
 table{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb}
@@ -1037,24 +1037,25 @@ function filterHist(q) { renderHist(q); }
 async function seedDatabase() {
   if (!onlineMode) { alert('Please connect OneDrive first'); return; }
   const btn = document.getElementById('seed-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Seeding…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
   try {
-    // Check if file already has data
     let existing = [];
     try { existing = await loadFromOneDrive(); } catch(e) {}
-    if (existing.length > 0) {
-      if (!confirm(`OneDrive already has ${existing.length} combinations. Replace with the full 106 historical records?`)) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
-        return;
-      }
+    // Only add combos that don't already exist (merge by ref code)
+    const existingRefs = new Set(existing.map(c => c.ref));
+    const toAdd = COMBOS.filter(c => !existingRefs.has(c.ref));
+    if (toAdd.length === 0) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
+      setAuthStatus('All 106 historical records already in database', 'ok');
+      return;
     }
-    await saveToOneDrive(COMBOS);
-    // Reload
+    const merged = [...existing, ...toAdd];
+    await saveToOneDrive(merged);
     sess = [];
     updateHistCount();
     renderHist('');
-    if (btn) { btn.textContent = '✓ Seeded 106 combinations'; }
-    setAuthStatus('Historical data seeded to OneDrive', 'ok');
+    if (btn) { btn.textContent = '✓ Added ' + toAdd.length + ' records'; }
+    setAuthStatus('Added ' + toAdd.length + ' historical records (' + merged.length + ' total)', 'ok');
     setTimeout(() => { if(btn){btn.disabled=false;btn.textContent='Seed historical data';} }, 3000);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
