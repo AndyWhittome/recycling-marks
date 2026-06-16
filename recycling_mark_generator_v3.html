@@ -918,31 +918,57 @@ function buildITQR(ref) {
 function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
   const code = ref.toUpperCase(), all = [...rK, ...nK], n = all.length;
   const RD='#2e7d8a', RM='#3d9aaa', ND='#b8690a', NM='#cc7a10', B='1px solid #fff';
+
+  // Scale font size down for many materials to prevent wrapping
+  const cellFs = n <= 4 ? '8pt' : n <= 6 ? '7pt' : n <= 8 ? '6pt' : '5.5pt';
+  const cellPad = n <= 4 ? '6px 5px' : n <= 6 ? '5px 4px' : '4px 3px';
+
   const cols = all.map(k => {
     const d = MAT[k]||{}, isR = k.startsWith('Icon_R_'), dk = isR?RD:ND, md = isR?RM:NM;
+    // Use -webkit-print-color-adjust inline on every cell div to force background printing
+    const printStyle = '-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;';
     return `<td style="width:${Math.floor(100/n)}%;padding:0;border-right:${B}">` +
-      `<div style="background:${dk};color:#fff;font-size:7pt;font-weight:700;padding:5px 4px;text-align:center;border-bottom:${B}">${d.it||''}</div>` +
-      `<div style="background:${md};color:#fff;font-size:7pt;padding:4px;text-align:center;border-bottom:${B}">${d.c||''}</div>` +
-      `<div style="background:${md};color:#fff;font-size:7pt;font-weight:700;padding:4px;text-align:center">${d.itm||''}</div></td>`;
+      `<div style="${printStyle}background:${dk};color:#fff;font-size:${cellFs};font-weight:700;padding:${cellPad};text-align:center;border-bottom:${B};white-space:nowrap;overflow:hidden">${d.it||''}</div>` +
+      `<div style="${printStyle}background:${md};color:#fff;font-size:${cellFs};padding:${cellPad};text-align:center;border-bottom:${B};white-space:nowrap;overflow:hidden">${d.c||''}</div>` +
+      `<div style="${printStyle}background:${md};color:#fff;font-size:${cellFs};font-weight:700;padding:${cellPad};text-align:center;white-space:nowrap;overflow:hidden">${d.itm||''}</div>` +
+      `</td>`;
   }).join('');
+
   const fb = btoa(unescape(encodeURIComponent(frSvg)));
   const ub = btoa(unescape(encodeURIComponent(ukSvg)));
   const ukH = nK.length ? 48 : 28;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><script>window.onload=function(){window.print()}<\/script>
-<style>@page{size:A4;margin:18mm}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{font-family:Helvetica,Arial,sans-serif;margin:0}
-.ref{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;margin-bottom:22px}
-.sec{font-size:11pt;font-weight:700;text-align:center;margin:24px 0 12px}
-table{width:100%;border-collapse:collapse;border:1.5px solid #888}
-.instr{background:${RM};color:#fff;font-size:8.5pt;font-weight:700;text-align:center;padding:7px}
-.center{text-align:center}</style></head><body>
-<div style="text-align:center;margin-bottom:16px;padding-top:4px"><img src="${FKA_LOGO}" style="height:42px"/></div><div class="ref">${code}</div>
-<div class="sec">Istruzioni di riciclaggio per l\u2019Italia</div>
+  const frH = 36;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+@page{size:A4 landscape;margin:12mm}
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;box-sizing:border-box}
+body{font-family:Helvetica,Arial,sans-serif;margin:0;padding:0}
+.ref{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;margin-bottom:14px}
+.logo{text-align:center;margin-bottom:10px}
+.sec{font-size:10pt;font-weight:700;text-align:center;margin:14px 0 8px}
+table{width:100%;border-collapse:collapse;border:1.5px solid #888;table-layout:fixed}
+td{padding:0;vertical-align:top}
+.instr{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;background:${RM}!important;color:#fff;font-size:8.5pt;font-weight:700;text-align:center;padding:7px;letter-spacing:.5px}
+.center{text-align:center}
+.marks-row{display:flex;justify-content:center;align-items:center;gap:40px;margin-top:8px}
+</style>
+</head><body>
+<div class="logo"><img src="${FKA_LOGO}" style="height:36px"/></div>
+<div class="ref">${code}</div>
+<div class="sec">Istruzioni di riciclaggio per l’Italia</div>
 <table><tr>${cols}</tr></table>
 <div class="instr">RACCOLTA DIFFERENZIATA</div>
-<div class="sec">Instructions de recyclage pour la France</div>
-<div class="center"><img src="data:image/svg+xml;base64,${fb}" style="height:30px;max-width:100%"/></div>
-<div class="sec">Recycling instructions for the United Kingdom</div>
-<div class="center"><img src="data:image/svg+xml;base64,${ub}" style="height:${ukH}px;max-width:100%"/></div>
+<div class="marks-row">
+  <div>
+    <div class="sec" style="margin-top:10px">Instructions de recyclage pour la France</div>
+    <div class="center"><img src="data:image/svg+xml;base64,${fb}" style="height:${frH}px;max-width:100%"/></div>
+  </div>
+  <div>
+    <div class="sec" style="margin-top:10px">Recycling instructions for the United Kingdom</div>
+    <div class="center"><img src="data:image/svg+xml;base64,${ub}" style="height:${ukH}px;max-width:100%"/></div>
+  </div>
+</div>
 </body></html>`;
 }
 
