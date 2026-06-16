@@ -438,7 +438,11 @@ async function graphGet(path) {
   const r = await fetch('https://graph.microsoft.com/v1.0' + path, {
     headers: { Authorization: 'Bearer ' + token }
   });
-  if (!r.ok) throw new Error('Graph GET ' + path + ' failed: ' + r.status);
+  if (!r.ok) {
+    let errDetail = '';
+    try { const j = await r.json(); errDetail = j.error?.message || JSON.stringify(j); } catch(e) {}
+    throw new Error('Graph GET failed (' + r.status + '): ' + errDetail);
+  }
   return r.json();
 }
 
@@ -545,8 +549,10 @@ async function connectOneDrive() {
     setAuthStatus('', 'ok');
     renderHist('');
   } catch(e) {
-    console.error('Full error:', e);
-    const msg = e.errorCode ? (e.errorCode + ': ' + e.errorMessage) : (e.message || JSON.stringify(e));
+    console.error('Full connectOneDrive error:', e);
+    const msg = e.errorCode 
+      ? (e.errorCode + ': ' + (e.errorMessage||''))
+      : (e.message || JSON.stringify(e) || 'unknown - check browser console');
     setAuthStatus('Failed: ' + msg, 'err');
     if (btn) { btn.disabled = false; btn.textContent = 'Connect OneDrive'; }
   }
@@ -956,20 +962,32 @@ window.addEventListener('load', async () => {
       onlineMode = true;
       setOnlineIndicator(true, odAccount.username);
       setAuthStatus('Loading OneDrive history…', 'info');
-      const remote = await loadFromOneDrive();
-      const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
-      sess.push(...remote.filter(c => !existingRefs.has(c.ref)));
-      updateHistCount();
-      setAuthStatus('', 'ok');
-      renderHist('');
+      try {
+        const remote = await loadFromOneDrive();
+        const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
+        sess.push(...remote.filter(c => !existingRefs.has(c.ref)));
+        updateHistCount();
+        setAuthStatus('', 'ok');
+        renderHist('');
+      } catch(loadErr) {
+        console.error('OneDrive load error:', loadErr);
+        const msg = loadErr.errorCode 
+          ? loadErr.errorCode + ': ' + (loadErr.errorMessage||'')
+          : (loadErr.message || JSON.stringify(loadErr));
+        setAuthStatus('Signed in but OneDrive load failed: ' + msg, 'err');
+        // Still mark as online so writes work
+        onlineMode = true;
+      }
     } else {
       setAuthStatus('', 'info');
       setOnlineIndicator(false);
     }
   } catch(e) {
     console.error('Auto-connect failed:', e);
-    const msg = e.errorCode ? e.errorCode : (e.message || 'unknown error');
-    setAuthStatus('', 'info');
+    const msg = e.errorCode 
+      ? e.errorCode + ': ' + (e.errorMessage||'')
+      : (e.message || JSON.stringify(e));
+    setAuthStatus('Failed: ' + msg, 'err');
     setOnlineIndicator(false);
   }
 });
