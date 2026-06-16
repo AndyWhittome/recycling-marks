@@ -874,20 +874,17 @@ function buildUK(rK, nK) {
   const CR = SVG_DATA[mx ? 'Frame_UK_Mixed_Cap_Right' : 'Frame_UK_Single_Cap_Right'];
   const H = CL.h;
   const font = `font-family="Futura PT,Futura,Arial Black,sans-serif" font-weight="900"`;
+  const fs = 5.2;
   const rT = rK.map(k => MAT[k]?.uk||k).join(', ') + ' recycle';
   const nT = nK.map(k => MAT[k]?.uk||k).join(', ') + " don\u2019t recycle";
   const maxLen = Math.max(rT.length, mx ? nT.length : 0);
 
-  // 4.0 SVG units per char is a safe estimate for Futura Black at 5.2pt
-  const CPX = 4.0;
-  const nt = Math.max(1, Math.ceil((maxLen * CPX + 10) / CB.w));
+  // 3.0px/char is empirically accurate for Futura Black 5.2pt in SVG
+  // Add a small fixed buffer of 12px to ensure no clipping
+  const nt = Math.max(1, Math.ceil((maxLen * 3.0 + 12) / CB.w));
   const bw = nt * CB.w;
   const tw = CL.w + bw + CR.w;
-
-  // Scale font down slightly if needed to guarantee fit
-  const tx = CL.w + 3;
-  const availW = tw - tx - CR.w - 2;
-  const fs = Math.min(5.2, 5.2 * (availW / (maxLen * CPX)));
+  const tx = CL.w + 2;
 
   const ps = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tw.toFixed(2)} ${H}">`];
   ps.push(em(CL, 0, 0));
@@ -895,11 +892,11 @@ function buildUK(rK, nK) {
   ps.push(em(CR, CL.w + bw, 0));
 
   if (!mx) {
-    ps.push(`<text x="${tx.toFixed(1)}" y="${(H/2+fs*0.38).toFixed(1)}" ${font} font-size="${fs.toFixed(2)}" fill="#414042">${rT}</text>`);
+    ps.push(`<text x="${tx.toFixed(1)}" y="${(H/2+fs*0.38).toFixed(1)}" ${font} font-size="${fs}" fill="#414042">${rT}</text>`);
   } else {
     const rh = H / 2;
-    ps.push(`<text x="${tx.toFixed(1)}" y="${(rh/2+fs*0.38).toFixed(1)}" ${font} font-size="${fs.toFixed(2)}" fill="#414042">${rT}</text>`);
-    ps.push(`<text x="${tx.toFixed(1)}" y="${(rh+rh/2+fs*0.38).toFixed(1)}" ${font} font-size="${fs.toFixed(2)}" fill="#414042">${nT}</text>`);
+    ps.push(`<text x="${tx.toFixed(1)}" y="${(rh/2+fs*0.38).toFixed(1)}" ${font} font-size="${fs}" fill="#414042">${rT}</text>`);
+    ps.push(`<text x="${tx.toFixed(1)}" y="${(rh+rh/2+fs*0.38).toFixed(1)}" ${font} font-size="${fs}" fill="#414042">${nT}</text>`);
   }
   ps.push('</svg>');
   return ps.join('');
