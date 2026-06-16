@@ -719,7 +719,10 @@ function doDownload(fileType) {
     const names = {fr: combo.ref+'_FR.svg', uk: combo.ref+'_UK.svg', itqr: combo.ref+'_IT_QR.svg', ithtml: combo.ref+'_IT_Materials.html'};
     const mimes = {fr:'image/svg+xml', uk:'image/svg+xml', itqr:'image/svg+xml', ithtml:'text/html'};
     if (fileType === 'ithtml') {
-      const win = window.open('', '_blank'); win.document.write(files[fileType]); win.document.close();
+      const blob = new Blob([files[fileType]], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     } else { dlBlob(names[fileType], files[fileType], mimes[fileType]); }
     if (status) { status.textContent = '&#10003; Downloaded ' + names[fileType]; setTimeout(() => { if(status) status.textContent=''; }, 3000); }
   } catch(e) {
@@ -794,7 +797,10 @@ function showGeneratedResult(ref, files) {
   ['fr','uk','itqr','ithtml'].forEach(t => {
     document.getElementById('gdl-'+t).onclick = () => {
       if (t === 'ithtml') {
-        const win = window.open('', '_blank'); win.document.write(files[t]); win.document.close();
+        const blob = new Blob([files[t]], {type:'text/html'});
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
       } else { dlBlob(dlMap[t][0], files[t], dlMap[t][1]); }
     };
   });
