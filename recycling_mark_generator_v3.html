@@ -934,11 +934,12 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
     const isR = k.startsWith('Icon_R_');
     const dk = isR ? RD : ND;
     const md = isR ? RM : NM;
-    const base = 'color:#fff!important;font-size:' + cellFs + ';padding:' + cellPad + ';text-align:center;word-break:break-word;line-height:1.3;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important';
+    // Use box-shadow instead of background - box-shadow always prints regardless of browser settings
+    const base = 'color:#fff;font-size:' + cellFs + ';padding:' + cellPad + ';text-align:center;word-break:break-word;line-height:1.3;position:relative;z-index:0';
     return '<td style="width:' + Math.floor(100/n) + '%;padding:0;border-right:' + BDR + ';vertical-align:top">'
-      + '<div style="background:' + dk + '!important;' + base + ';font-weight:700;border-bottom:' + BDR + '">' + (d.it||'') + '</div>'
-      + '<div style="background:' + md + '!important;' + base + ';border-bottom:' + BDR + '">' + (d.c||'') + '</div>'
-      + '<div style="background:' + md + '!important;' + base + ';font-weight:700">' + (d.itm||'') + '</div>'
+      + '<div style="background:' + dk + ';box-shadow:inset 0 0 0 100vw ' + dk + ';' + base + ';font-weight:700;border-bottom:' + BDR + '">' + (d.it||'') + '</div>'
+      + '<div style="background:' + md + ';box-shadow:inset 0 0 0 100vw ' + md + ';' + base + ';border-bottom:' + BDR + '">' + (d.c||'') + '</div>'
+      + '<div style="background:' + md + ';box-shadow:inset 0 0 0 100vw ' + md + ';' + base + ';font-weight:700">' + (d.itm||'') + '</div>'
       + '</td>';
   }).join('');
 
@@ -946,34 +947,32 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
   const ub = btoa(unescape(encodeURIComponent(ukSvg)));
   const ukH = nK.length ? 48 : 28;
 
-  // Split script tag to avoid browser parsing issues
   const printScript = '<scr' + 'ipt>window.addEventListener("load",function(){var t=document.querySelector(".ref");if(t)document.title=t.textContent;setTimeout(function(){window.print();},600);})</scr' + 'ipt>';
 
   const page = '<!DOCTYPE html><html><head><meta charset="utf-8">'
     + printScript
     + '<style>'
     + '@page{size:A4 landscape;margin:10mm}'
-    + 'html,body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}'
-    + '*{box-sizing:border-box}'
+    + '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;box-sizing:border-box}'
     + 'body{font-family:Helvetica,Arial,sans-serif;margin:0;padding:0}'
     + '.ref{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;margin-bottom:14px}'
     + '.logo{text-align:center;margin-bottom:10px}'
-    + '.sec{font-size:10pt;font-weight:700;text-align:center;margin:14px 0 8px}'
+    + '.sec{font-size:10pt;font-weight:700;text-align:center;margin:12px 0 6px}'
     + 'table{width:100%;border-collapse:collapse;border:1.5px solid #888;table-layout:fixed}'
-    + '.instr{background:' + RM + '!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color:#fff!important;font-size:8.5pt;font-weight:700;text-align:center;padding:7px;letter-spacing:.5px}'
-    + '.marks-row{display:flex;justify-content:center;align-items:flex-start;gap:40px;margin-top:8px}'
-    + '.center{text-align:center}'
+    + '.instr{background:' + RM + ';box-shadow:inset 0 0 0 100vw ' + RM + ';color:#fff;font-size:8.5pt;font-weight:700;text-align:center;padding:7px;letter-spacing:.5px}'
+    + '.marks-col{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:4px}'
+    + '.mark-block{text-align:center}'
     + '</style></head><body>'
-    + '<div class="logo"><img src="' + FKA_LOGO + '" style="height:36px"/></div>'
+    + '<div class="logo"><img src="' + FKA_LOGO + '" style="height:32px"/></div>'
     + '<div class="ref">' + code + '</div>'
     + '<div class="sec">Istruzioni di riciclaggio per l’Italia</div>'
     + '<table><tr>' + cols + '</tr></table>'
     + '<div class="instr">RACCOLTA DIFFERENZIATA</div>'
-    + '<div class="marks-row">'
-    + '<div><div class="sec">Instructions de recyclage pour la France</div>'
-    + '<div class="center"><img src="data:image/svg+xml;base64,' + fb + '" style="height:36px;max-width:100%"/></div></div>'
-    + '<div><div class="sec">Recycling instructions for the United Kingdom</div>'
-    + '<div class="center"><img src="data:image/svg+xml;base64,' + ub + '" style="height:' + ukH + 'px;max-width:100%"/></div></div>'
+    + '<div class="marks-col">'
+    + '<div class="mark-block"><div class="sec">Instructions de recyclage pour la France</div>'
+    + '<img src="data:image/svg+xml;base64,' + fb + '" style="height:32px;max-width:100%"/></div>'
+    + '<div class="mark-block"><div class="sec">Recycling instructions for the United Kingdom</div>'
+    + '<img src="data:image/svg+xml;base64,' + ub + '" style="height:' + ukH + 'px;max-width:100%"/></div>'
     + '</div>'
     + '</body></html>';
 
