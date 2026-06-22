@@ -476,6 +476,7 @@ async function loadFromOneDrive() {
     const result = await graphGet(path);
     dbFileId = result.id;
     if (!DB_DRIVE_ID && result.parentReference) DB_DRIVE_ID = result.parentReference.driveId;
+    console.log('Loading from driveId:', DB_DRIVE_ID, 'itemId:', dbFileId, 'webUrl:', result.webUrl);
     const token = await getToken();
     const downloadUrl = result['@microsoft.graph.downloadUrl'];
     const r = await fetch(downloadUrl || ('https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content'), {
@@ -499,13 +500,29 @@ async function loadFromOneDrive() {
 
 async function saveToOneDrive(combinations) {
   const content = JSON.stringify({ combinations, updated: new Date().toISOString() }, null, 2);
-  if (!dbFileId || !DB_DRIVE_ID) {
-    const result = await graphGet('/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME);
+  // Always resolve the file path fresh to ensure we write to the right place
+  const isOwner = odAccount && odAccount.username && odAccount.username.toLowerCase() === DB_OWNER_UPN.toLowerCase();
+  const savePath = isOwner
+    ? '/me/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME
+    : '/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME;
+  console.log('[RMG] Saving via path:', savePath, 'count:', combinations.length, 'isOwner:', isOwner);
+  const result = await graphGet(savePath).catch(async () => {
+    // File doesn't exist yet - create it via upload to path
+    console.log('[RMG] File not found, will create via PUT');
+    return null;
+  });
+  if (result) {
     dbFileId = result.id;
     if (result.parentReference) DB_DRIVE_ID = result.parentReference.driveId;
   }
+  console.log('[RMG] Writing to driveId:', DB_DRIVE_ID, 'itemId:', dbFileId);
   const token = await getToken();
-  const r = await fetch('https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content', {
+  // If we have driveId and itemId use them, otherwise fall back to path-based PUT
+  const putUrl = (DB_DRIVE_ID && dbFileId)
+    ? 'https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content'
+    : 'https://graph.microsoft.com/v1.0' + savePath + ':/content';
+  console.log('[RMG] PUT to:', putUrl.substring(0, 100));
+  const r = await fetch(putUrl, {
     method: 'PUT',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: content
