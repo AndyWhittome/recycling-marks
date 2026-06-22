@@ -479,11 +479,12 @@ async function loadFromOneDrive() {
     console.log('Loading from driveId:', DB_DRIVE_ID, 'itemId:', dbFileId, 'webUrl:', result.webUrl);
     const token = await getToken();
     const downloadUrl = result['@microsoft.graph.downloadUrl'];
-    // Add cache-busting to prevent stale data
-    const dlUrl = downloadUrl || ('https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content');
-    const dlUrlBusted = dlUrl + (dlUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    const r = await fetch(dlUrlBusted, {
-      headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    // Always use Graph API endpoint with user's own token (not the pre-auth downloadUrl
+    // which is owner-specific and fails for other users)
+    const dlUrl = 'https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content?_t=' + Date.now();
+    console.log('[RMG] Fetching content via Graph API:', dlUrl.substring(0, 100));
+    const r = await fetch(dlUrl, {
+      headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' }
     });
     if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
