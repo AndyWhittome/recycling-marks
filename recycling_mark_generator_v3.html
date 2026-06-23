@@ -137,7 +137,7 @@ tr:hover td{background:#fafafa}
           <th style="width:90px">Brand</th>
           <th>Recyclable</th>
           <th>Non-recyclable</th>
-          <th style="width:85px">Type</th>
+          <th style="width:85px">Type</th><th style="width:32px"></th>
         </tr>
       </thead>
       <tbody id="hist-body"></tbody>
@@ -611,13 +611,14 @@ async function connectOneDrive() {
 
 function updateHistCount() {
   const btn = document.getElementById('nav-hist');
-  if (btn) btn.textContent = 'History (' + (COMBOS.length + sess.length) + ')';
+  const total = COMBOS.filter(c => !deletedRefs.has(c.ref)).length + sess.filter(c => !deletedRefs.has(c.ref)).length;
+  if (btn) btn.textContent = 'History (' + total + ')';
 }
 
 // ── End Microsoft Auth ───────────────────────────────────────────────────────
 
 // State
-let rSel = [], nSel = [], sess = [], activeCombo = null;
+let rSel = [], nSel = [], sess = [], activeCombo = null, deletedRefs = new Set();
 
 // Build material grids
 const RK = Object.keys(MAT).filter(k => k.startsWith('Icon_R_'));
@@ -1042,20 +1043,51 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
 }
 
 function renderHist(q) {
-  const all = [...COMBOS, ...sess];
+  const all = [...COMBOS.filter(c => !deletedRefs.has(c.ref)), ...sess.filter(c => !deletedRefs.has(c.ref))];
   const f = q ? all.filter(c =>
     c.ref.toLowerCase().includes(q.toLowerCase()) ||
     (c.brand||'').toLowerCase().includes(q.toLowerCase()) ||
     [...(c.r||[]),...(c.n||[])].some(k => MAT[k]?.label.toLowerCase().includes(q.toLowerCase()))
   ) : all;
   document.getElementById('hist-body').innerHTML = f.map(c => `
-    <tr>
+    <tr class="hist-row" style="position:relative">
       <td style="font-weight:600;font-family:monospace">${c.ref}</td>
       <td style="color:#6b7280">${c.brand||'—'}</td>
       <td>${(c.r||[]).map(k=>`<span class="tag-r">${MAT[k]?.label||k}</span>`).join(' ')}</td>
       <td>${(c.n||[]).length ? (c.n||[]).map(k=>`<span class="tag-n">${MAT[k]?.label||k}</span>`).join(' ') : '<span style="color:#d1d5db">—</span>'}</td>
       <td style="font-size:10px;font-weight:600;color:${(c.n||[]).length?'#d97706':'#0F6E56'}">${(c.n||[]).length?'Mixed':'Recycle only'}</td>
+      <td style="width:32px;text-align:center">
+        <button class="del-btn" onclick="deleteCombo('${c.ref}')" title="Delete ${c.ref}" style="background:none;border:none;cursor:pointer;color:#d1d5db;font-size:14px;padding:2px 6px;border-radius:3px;transition:color .15s" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#d1d5db'">&#10005;</button>
+      </td>
     </tr>`).join('');
+}
+
+async function deleteCombo(ref) {
+  if (!confirm('Delete combination ' + ref + '? This cannot be undone.')) return;
+  
+  // Remove from sess array
+  sess = sess.filter(c => c.ref !== ref);
+  
+  // Remove from COMBOS is not possible (hardcoded) but we can track deletions
+  // and filter them out - store deleted refs list
+  deletedRefs.add(ref);
+  
+  // If online, update the OneDrive file
+  if (onlineMode) {
+    try {
+      setAuthStatus('Deleting ' + ref + ' from OneDrive…', 'info');
+      const current = await loadFromOneDrive();
+      const updated = current.filter(c => c.ref !== ref);
+      await saveToOneDrive(updated);
+      setAuthStatus('Deleted ' + ref, 'ok');
+      setTimeout(() => setAuthStatus('', 'ok'), 2000);
+    } catch(e) {
+      setAuthStatus('Delete failed: ' + e.message, 'err');
+    }
+  }
+  
+  updateHistCount();
+  renderHist(document.querySelector('.hist-search')?.value || '');
 }
 
 function filterHist(q) { renderHist(q); }
