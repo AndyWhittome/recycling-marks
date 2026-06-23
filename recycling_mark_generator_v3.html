@@ -1153,7 +1153,6 @@ window.addEventListener('load', async () => {
         const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
         sess.push(...remote.filter(c => !existingRefs.has(c.ref)));
         updateHistCount();
-        setAuthStatus('', 'ok');
         renderHist('');
       } catch(loadErr) {
         console.error('OneDrive load error:', loadErr);
