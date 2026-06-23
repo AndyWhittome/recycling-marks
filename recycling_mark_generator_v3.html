@@ -84,7 +84,7 @@ tr:hover td{background:#fafafa}
     <div style="display:flex;align-items:center;gap:12px">
       <div style="text-align:right">
         <div style="display:flex;align-items:center;gap:6px"><div id="online-indicator" style="font-size:10px;color:#6b7280">&#9679; Offline — history not shared</div><button id="refresh-btn" onclick="refreshFromOneDrive()" style="display:none;padding:2px 8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:3px;font-size:10px;cursor:pointer">↻ Refresh</button></div>
-        <div id="auth-status" style="font-size:10px;color:#6b7280;min-height:14px"></div>
+        <div id="auth-status" style="font-size:11px;color:#fff;min-height:14px;max-width:500px"></div>
       </div>
       <button id="signin-btn" onclick="connectOneDrive()" style="padding:5px 12px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap">Connect OneDrive</button>
       <div class="nav">
@@ -489,8 +489,8 @@ async function loadFromOneDrive() {
     if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
     const combos = data.combinations || [];
-    setAuthStatus('Loaded ' + combos.length + ' combinations from OneDrive', 'ok');
-    setTimeout(() => setAuthStatus('', 'ok'), 3000);
+    setAuthStatus('Loaded ' + combos.length + ' from OneDrive (saved: ' + (data.updated ? data.updated.substring(0,16).replace('T',' ') : 'unknown') + ')', 'ok');
+    setTimeout(() => setAuthStatus('', 'ok'), 10000);
     return combos;
   } catch(e) {
     console.error('loadFromOneDrive error:', e);
@@ -555,7 +555,7 @@ function setAuthStatus(msg, type) {
   const el = document.getElementById('auth-status');
   if (!el) return;
   el.textContent = msg;
-  el.style.color = type === 'err' ? '#dc2626' : type === 'ok' ? '#0F6E56' : '#6b7280';
+  el.style.color = type === 'err' ? '#fca5a5' : '#fff';
 }
 
 function setOnlineIndicator(online, username) {
@@ -1106,7 +1106,7 @@ async function refreshFromOneDrive() {
     setAuthStatus('Refreshed — ' + (COMBOS.length + sess.length) + ' total combinations', 'ok');
     setTimeout(() => setAuthStatus('', 'ok'), 3000);
   } catch(e) {
-    setAuthStatus('Refresh failed: ' + e.message, 'err');
+    setAuthStatus('Refresh failed: ' + e.message + ' — please screenshot this message', 'err');
   }
   if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
 }
