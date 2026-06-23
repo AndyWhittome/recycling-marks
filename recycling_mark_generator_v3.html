@@ -564,7 +564,7 @@ function setOnlineIndicator(online, username) {
   if (!ind) return;
   if (online) {
     ind.innerHTML = '&#9679; Syncing with OneDrive' + (username ? ' · ' + username : '');
-    ind.style.color = '#0F6E56';
+    ind.style.color = '#fff';
     if (btn) btn.style.display = 'none';
     const rbtn = document.getElementById('refresh-btn');
     if (rbtn) rbtn.style.display = 'inline-block';
