@@ -489,8 +489,7 @@ async function loadFromOneDrive() {
     if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
     const combos = data.combinations || [];
-    setAuthStatus('Loaded ' + combos.length + ' from OneDrive (saved: ' + (data.updated ? data.updated.substring(0,16).replace('T',' ') : 'unknown') + ')', 'ok');
-    setTimeout(() => setAuthStatus('', 'ok'), 10000);
+    setAuthStatus('Last synced: ' + (data.updated ? data.updated.substring(0,16).replace('T',' ') : 'unknown') + ' · ' + combos.length + ' combinations', 'ok');
     return combos;
   } catch(e) {
     console.error('loadFromOneDrive error:', e);
@@ -1103,8 +1102,7 @@ async function refreshFromOneDrive() {
     sess.push(...newFromRemote);
     updateHistCount();
     renderHist('');
-    setAuthStatus('Refreshed — ' + (COMBOS.length + sess.length) + ' total combinations', 'ok');
-    setTimeout(() => setAuthStatus('', 'ok'), 3000);
+    setAuthStatus('Last synced: ' + new Date().toISOString().substring(0,16).replace('T',' ') + ' · ' + (COMBOS.filter(c=>!deletedRefs.has(c.ref)).length + sess.filter(c=>!deletedRefs.has(c.ref)).length) + ' combinations', 'ok');
   } catch(e) {
     setAuthStatus('Refresh failed: ' + e.message + ' — please screenshot this message', 'err');
   }
