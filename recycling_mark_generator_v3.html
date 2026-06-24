@@ -1120,24 +1120,22 @@ async function seedDatabase() {
   const btn = document.getElementById('seed-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
   try {
+    // Always read fresh from file, ignoring any cached onlineHistory
     let existing = [];
     try { existing = await loadFromOneDrive(); } catch(e) {}
-    // Only add combos that don't already exist (merge by ref code)
-    const existingRefs = new Set(existing.map(c => c.ref));
-    const toAdd = COMBOS.filter(c => !existingRefs.has(c.ref));
-    if (toAdd.length === 0) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
-      setAuthStatus('All 106 historical records already in database', 'ok');
-      return;
-    }
-    const merged = [...existing, ...toAdd];
+    // Merge: start with COMBOS (106), add anything from file not in COMBOS
+    const comboRefs = new Set(COMBOS.map(c => c.ref));
+    const extrasFromFile = existing.filter(c => !comboRefs.has(c.ref));
+    const merged = [...COMBOS, ...extrasFromFile];
+    if (btn) btn.textContent = 'Saving…';
     await saveToOneDrive(merged);
-    sess = [];
+    onlineHistory = merged;
+    sess = extrasFromFile;
     updateHistCount();
     renderHist('');
-    if (btn) { btn.textContent = '✓ Added ' + toAdd.length + ' records'; }
-    setAuthStatus('Added ' + toAdd.length + ' historical records (' + merged.length + ' total)', 'ok');
-    setTimeout(() => { if(btn){btn.disabled=false;btn.textContent='Seed historical data';} }, 3000);
+    if (btn) { btn.textContent = '✓ Done — ' + merged.length + ' combinations'; }
+    setAuthStatus('Database rebuilt: ' + COMBOS.length + ' historical + ' + extrasFromFile.length + ' new = ' + merged.length + ' total', 'ok');
+    setTimeout(() => { if(btn){btn.disabled=false;btn.textContent='Seed historical data';} }, 4000);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Seed historical data'; }
     setAuthStatus('Seed failed: ' + e.message, 'err');
