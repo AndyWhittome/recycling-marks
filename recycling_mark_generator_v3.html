@@ -592,11 +592,13 @@ async function connectOneDrive() {
     onlineMode = true;
     setAuthStatus('Loading history from OneDrive…', 'info');
     const remote = await loadFromOneDrive();
-    const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
-    sess.push(...remote.filter(c => !existingRefs.has(c.ref)));
+    if (remote.length > 0) {
+      // Use file as source of truth — replace hardcoded COMBOS in display
+      sess = remote.filter(c => !COMBOS.find(h => h.ref === c.ref));
+      onlineHistory = remote;
+    }
     updateHistCount();
     setOnlineIndicator(true, odAccount?.username);
-    setAuthStatus('', 'ok');
     renderHist('');
   } catch(e) {
     console.error('Full connectOneDrive error:', e);
@@ -610,14 +612,15 @@ async function connectOneDrive() {
 
 function updateHistCount() {
   const btn = document.getElementById('nav-hist');
-  const total = COMBOS.filter(c => !deletedRefs.has(c.ref)).length + sess.filter(c => !deletedRefs.has(c.ref)).length;
+  const base = onlineHistory.length > 0 ? onlineHistory : COMBOS;
+  const total = base.filter(c => !deletedRefs.has(c.ref)).length + sess.filter(c => !deletedRefs.has(c.ref) && !base.find(h => h.ref === c.ref)).length;
   if (btn) btn.textContent = 'History (' + total + ')';
 }
 
 // ── End Microsoft Auth ───────────────────────────────────────────────────────
 
 // State
-let rSel = [], nSel = [], sess = [], activeCombo = null, deletedRefs = new Set();
+let rSel = [], nSel = [], sess = [], activeCombo = null, deletedRefs = new Set(), onlineHistory = [];
 
 // Build material grids
 const RK = Object.keys(MAT).filter(k => k.startsWith('Icon_R_'));
@@ -1042,7 +1045,9 @@ function buildITHtml(rK, nK, ref, frSvg, ukSvg) {
 }
 
 function renderHist(q) {
-  const all = [...COMBOS.filter(c => !deletedRefs.has(c.ref)), ...sess.filter(c => !deletedRefs.has(c.ref))];
+  // Use online history if available (includes additions and respects deletions), else fall back to hardcoded
+  const base = onlineHistory.length > 0 ? onlineHistory : COMBOS;
+  const all = [...base.filter(c => !deletedRefs.has(c.ref)), ...sess.filter(c => !deletedRefs.has(c.ref) && !base.find(h => h.ref === c.ref))];
   const f = q ? all.filter(c =>
     c.ref.toLowerCase().includes(q.toLowerCase()) ||
     (c.brand||'').toLowerCase().includes(q.toLowerCase()) ||
@@ -1097,9 +1102,10 @@ async function refreshFromOneDrive() {
   if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
   try {
     const remote = await loadFromOneDrive();
-    const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
-    const newFromRemote = remote.filter(c => !existingRefs.has(c.ref));
-    sess.push(...newFromRemote);
+    if (remote.length > 0) {
+      sess = remote.filter(c => !COMBOS.find(h => h.ref === c.ref));
+      onlineHistory = remote;
+    }
     updateHistCount();
     renderHist('');
     setAuthStatus('Last synced: ' + new Date().toISOString().substring(0,16).replace('T',' ') + ' · ' + (COMBOS.filter(c=>!deletedRefs.has(c.ref)).length + sess.filter(c=>!deletedRefs.has(c.ref)).length) + ' combinations', 'ok');
@@ -1150,8 +1156,10 @@ window.addEventListener('load', async () => {
       setAuthStatus('Loading OneDrive history…', 'info');
       try {
         const remote = await loadFromOneDrive();
-        const existingRefs = new Set([...COMBOS.map(c=>c.ref), ...sess.map(c=>c.ref)]);
-        sess.push(...remote.filter(c => !existingRefs.has(c.ref)));
+        if (remote.length > 0) {
+          sess = remote.filter(c => !COMBOS.find(h => h.ref === c.ref));
+          onlineHistory = remote;
+        }
         updateHistCount();
         renderHist('');
       } catch(loadErr) {
