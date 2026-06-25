@@ -481,10 +481,16 @@ async function loadFromOneDrive() {
     const downloadUrl = result['@microsoft.graph.downloadUrl'];
     // Always use Graph API endpoint with user's own token (not the pre-auth downloadUrl
     // which is owner-specific and fails for other users)
-    const dlUrl = 'https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content?_t=' + Date.now();
-    console.log('[RMG] Fetching content via Graph API:', dlUrl.substring(0, 100));
+    // Use consistent Graph API endpoint with aggressive cache busting
+    const dlUrl = 'https://graph.microsoft.com/v1.0/drives/' + DB_DRIVE_ID + '/items/' + dbFileId + '/content';
+    console.log('[RMG] Fetching content via Graph API');
     const r = await fetch(dlUrl, {
-      headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' }
+      headers: { 
+        Authorization: 'Bearer ' + token,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'If-None-Match': '*'
+      }
     });
     if (!r.ok) throw new Error('Download failed: ' + r.status);
     const data = await r.json();
@@ -504,11 +510,9 @@ async function loadFromOneDrive() {
 async function saveToOneDrive(combinations) {
   const content = JSON.stringify({ combinations, updated: new Date().toISOString() }, null, 2);
   // Always resolve the file path fresh to ensure we write to the right place
-  const isOwner = odAccount && odAccount.username && odAccount.username.toLowerCase() === DB_OWNER_UPN.toLowerCase();
-  const savePath = isOwner
-    ? '/me/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME
-    : '/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME;
-  console.log('[RMG] Saving via path:', savePath, 'count:', combinations.length, 'isOwner:', isOwner);
+  // Always use /users/UPN path for both read and write to ensure consistency
+  const savePath = '/users/' + DB_OWNER_UPN + '/drive/root:/' + DB_FOLDER + '/' + DB_FILENAME;
+  console.log('[RMG] Saving via path:', savePath, 'count:', combinations.length);
   const result = await graphGet(savePath).catch(async () => {
     // File doesn't exist yet - create it via upload to path
     console.log('[RMG] File not found, will create via PUT');
